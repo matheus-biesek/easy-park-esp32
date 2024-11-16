@@ -5,8 +5,8 @@
 #define TXD2 17
 
 void connectWifi() {
-  const char* ssid = "NOME_DO_WIFI";
-  const char* password = "SENHA_DO_WIFI";
+  const char* ssid = "BIESEK";
+  const char* password = "matheuS123";
 
   Serial.println("Conectando ao WiFi");
   WiFi.begin(ssid, password);
@@ -237,7 +237,7 @@ class ApiHandler {
       if (responseCode > 0) {
         String response = http.getString();
         http.end();
-        return response;
+        return String(response);
       } else {
         Serial.println("Erro na requisição POST: " + http.errorToString(responseCode));
         http.end();
@@ -276,7 +276,7 @@ StatusManager statusManager;
 Serial2Data serial2Data;
 
 ApiHandler apiEasyPark(
-  "CHAVE_DAS_API", 
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJsb2dpbi1hdXRoLWlwYSIsInN1YiI6ImFkbXIiLCJyb2xlIjowLCJleHAiOjE3MzE0NzMxNjd9.A1DgXIMXFXWVhRz38NYHuqAkTtCrUwHCk8hPMrpGdwA", 
   "https://www.easypark.services/vacancy/change-vacancies-status", 
   "https://www.easypark.services/parking-lot/get-gate-status", 
   "https://www.easypark.services/parking-lot/get-message-adm",
@@ -295,6 +295,8 @@ void requestAPI(void *pvParameters) {
     String postGateOne = "{\"gate\":\"ONE\"}";
     String postVacancyOneStatus = "[{\"position\":" + String(1) + ",\"status\":\"" + (serial2Data.getVacancyOneStatus() ? "busy" : "available") + "\"}]";
     String postVacancyTwoStatus = "[{\"position\":" + String(2) + ",\"status\":\"" + (serial2Data.getVacancyTwoStatus() ? "busy" : "available") + "\"}]";
+    String postVacancyOneHistory = "{\"position\":" + String(1) + ",\"status\":\"" + (serial2Data.getVacancyOneStatus() ? "busy" : "available") + "\"}";
+    String postVacancyTwoHistory = "{\"position\":" + String(2) + ",\"status\":\"" + (serial2Data.getVacancyTwoStatus() ? "busy" : "available") + "\"}";
 
     apiResult = apiEasyPark.makeHttpRequestGet(apiEasyPark.getUrlMessageAdm());
     if (apiResult != ""){
@@ -304,8 +306,8 @@ void requestAPI(void *pvParameters) {
     }
 
     apiResult = apiEasyPark.makeHttpRequestPost(postGateOne,apiEasyPark.getUrlGateOneStatus());
-    if (apiResult =! ""){
-      apiEasyPark.setApiResultGateOneStatus(apiRsult);
+    if (apiResult != ""){
+      apiEasyPark.setApiResultGateOneStatus(apiResult);
       statusManager.setGateOneStatusAvailable(true);
       apiResult = "";
     }
@@ -326,18 +328,18 @@ void requestAPI(void *pvParameters) {
       }
     }
 
-    if (Serial2Data.isVacancyOneHistoryAvailable()){
-      apiResult = apiEasyPark.makeHttpRequestPost(postVacancyOneStatus, apiEasyPark.getUrlSaveVacancyHistory());
+    if (statusManager.isVacancyOneHistoryAvailable()){
+      apiResult = apiEasyPark.makeHttpRequestPost(postVacancyOneHistory, apiEasyPark.getUrlSaveVacancyHistory());
       if (apiResult =! ""){
-        Serial2Data.setVacancyOneHistoryAvailable(false);
+        statusManager.setVacancyOneHistoryAvailable(false);
         apiResult = "";
       }
     }
 
-    if (Serial2Data.isVacancyTwoHistoryAvailable()){
-      apiResult = apiEasyPark.makeHttpRequestPut(postVacancyTwoStatus, apiEasyPark.getUrlSaveVacancyHistory());
+    if (statusManager.isVacancyTwoHistoryAvailable()){
+      apiResult = apiEasyPark.makeHttpRequestPost(postVacancyTwoHistory, apiEasyPark.getUrlSaveVacancyHistory());
       if (apiResult != ""){
-        Serial2Data.setVacancyTwoHistoryAvailable(false);
+        statusManager.setVacancyTwoHistoryAvailable(false);
         apiResult = "";
       }
     }
@@ -358,12 +360,12 @@ void handleSerial(void *pvParameters) {
 
     if (serial2Data.getVacancyOneStatus() != lastVacancyOneHistoric){
       lastVacancyOneHistoric = serial2Data.getVacancyOneStatus();
-      Serial2Data.setVacancyOneHistoryAvailable(true);
+      statusManager.setVacancyOneHistoryAvailable(true);
     }
 
     if (serial2Data.getVacancyTwoStatus() != lastVacancyTwoHistoric){
       lastVacancyTwoHistoric = serial2Data.getVacancyTwoStatus();
-      Serial2Data.setVacancyTwoHistoryAvailable(true);
+      statusManager.setVacancyTwoHistoryAvailable(true);
     }
 
     if (statusManager.isMessageAdmAvailable()) {
@@ -371,7 +373,7 @@ void handleSerial(void *pvParameters) {
       messageAdmFormated = "messageAdm:" + apiEasyPark.getApiResultMessageAdm();
       messageAdmFormated.trim();
       Serial2.println(messageAdmFormated);
-      Serial1.println("Mensagem enviada para o arduino - " + messageAdmFormated);
+      Serial.println("Mensagem enviada para o arduino - " + messageAdmFormated);
     }
     
     if (statusManager.isGateOneStatusAvailable()) {
@@ -379,7 +381,7 @@ void handleSerial(void *pvParameters) {
       gateOneStatusFormated = "gateOneStatus:" + apiEasyPark.getApiResultGateOneStatus();
       gateOneStatusFormated.trim();
       Serial2.println(gateOneStatusFormated);
-      Serial1.println("Mensagem enviada para o arduino - " + gateOneStatusFormated);
+      Serial.println("Mensagem enviada para o arduino - " + gateOneStatusFormated);
     }
     vTaskDelay(125 / portTICK_PERIOD_MS);
   }
